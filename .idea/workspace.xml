@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ChangeListManager">
+    <list default="true" id="59d1e85f-3508-45a7-8349-1589c45cff8d" name="更改" comment="">
+      <change afterPath="$PROJECT_DIR$/.idea/EpicOfElement2D.iml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/profiles_settings.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/config.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/core/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/core/animation.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/core/camera.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/core/particle.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/core/save.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/core/sound.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/data/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/data/items.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/data/maps.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/data/monsters.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/data/npcs.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/data/quests.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/data/skills.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/entities/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/entities/enemy.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/entities/npc.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/entities/player.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/entities/projectile.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/main.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/particles.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/requirements.txt" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/save.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/scene.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/sound.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/systems/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/systems/combat.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/systems/dialogue.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/systems/equipment.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/systems/inventory.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/systems/level_up.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/systems/quest.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/systems/settings.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/systems/shop.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/text.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/ui/__init__.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/ui/character.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/ui/dialogue.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/ui/hud.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/ui/inventory.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/ui/menus.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/ui/quest.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/ui/shop.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/ui/theme.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/ui/widgets.py" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/utils.py" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Python Script" />
+      </list>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="ProjectColorInfo"><![CDATA[{
+  "associatedIndex": 7
+}]]></component>
+  <component name="ProjectId" id="3HuPaPnffTu9gmAN1DxPzGOTjYJ" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "Python.main.executor": "Run",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "settings.editor.selected.configurable": "preferences.pluginManager"
+  }
+}]]></component>
+  <component name="RunManager">
+    <configuration name="main" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="EpicOfElement2D" />
+      <option name="ENV_FILES" value="" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="RUN_TOOL" value="" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/main.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Python.main" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SharedIndexes">
+    <attachedChunks>
+      <set>
+        <option value="bundled-python-sdk-f2b7a9f6281b-6e1f45a539f7-com.jetbrains.pycharm.pro.sharedIndexes.bundled-PY-253.29346.142" />
+      </set>
+    </attachedChunks>
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="默认任务">
+      <changelist id="59d1e85f-3508-45a7-8349-1589c45cff8d" name="更改" comment="" />
+      <created>1786715043862</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1786715043862</updated>
+    </task>
+    <servers />
+  </component>
+</project>
