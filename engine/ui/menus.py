@@ -100,26 +100,34 @@ class ClassSelectMenu(Menu):
         cw, ch = config.Graphics.WINDOW_W, config.Graphics.WINDOW_H
         draw_util.add_rect(batch, 0, 0, cw, ch, (18, 18, 26))
         draw_util.add_text(batch, "选择你的职业", cw/2, ch - 60, size=28, color=(240, 200, 90))
-        # 显示说明
-        if self._classes:
-            sel = self._classes[min(max(self.hover_idx(), 0), len(self._classes)-1)]
+        # 仅当鼠标悬停于某个职业按钮时才显示对应职业的描述；
+        # 悬停于按钮之外的区域时不显示描述。
+        idx = self.hover_idx()
+        if idx is not None and idx < len(self._classes):
+            sel = self._classes[idx]
             desc = sel.get("desc", "无描述")
             role = sel.get("role", "")
-            draw_util.add_text(batch, role, cw/2, ch - 380, size=16, color=(180, 200, 220))
-            # 多行描述
-            lines = self._wrap(desc, 56)
-            _y = ch - 410
+            # 显示在标题与按钮之间的空白区（按钮顶边在 ch-300），避免与按钮重叠
+            draw_util.add_text(batch, sel.get("name", ""), cw/2, ch - 140,
+                               size=20, color=(240, 200, 90))
+            draw_util.add_text(batch, role, cw/2, ch - 176, size=16, color=(180, 200, 220))
+            lines = self._wrap(desc, 54)
+            _y = ch - 210
             for ln in lines:
-                draw_util.add_text(batch, ln, cw/2, _y, size=13, color=(200, 200, 200))
-                _y -= 22
+                draw_util.add_text(batch, ln, cw/2, _y, size=14, color=(200, 200, 200))
+                _y -= 26
+        else:
+            draw_util.add_text(batch, "将鼠标悬停到上方职业按钮查看详情",
+                               cw/2, ch - 180, size=15, color=(120, 125, 140))
 
     def hover_idx(self):
+        """返回当前悬停的按钮索引；未悬停于任何按钮时返回 None。"""
         if self.hover is None:
-            return 0
+            return None
         for i, b in enumerate(self.buttons):
             if b is self.hover:
                 return i
-        return 0
+        return None
 
     def _wrap(self, s, width):
         out, cur = [], ""

@@ -29,11 +29,17 @@ from .save import SaveManager
 from .vector2 import Vec2
 from .registry import REGISTRY
 
-from .ui.draw_util import add_rect, add_text, add_border, add_circle
+from .ui.draw_util import (add_rect, add_text, add_border, add_circle,
+                           set_viewport_h, begin_frame)
 from .ui.hud import HUD
 from .ui.inventory_screen import InventoryScreen
 from .ui.dialog import DialogBox
 from .ui.menus import TitleMenu, ClassSelectMenu, SaveScreen, PauseMenu
+
+# 区块边长（与 world.CHUNK_SIZE 保持一致，避免与 config 耦合）
+_CHUNK = 16
+# 缓存“未命中”哨兵（用于区分 None 与未缓存）
+_MISS = object()
 
 
 class Game:
@@ -87,6 +93,14 @@ class Game:
         self.batch = pyglet.graphics.Batch()
         self.world_batch = pyglet.graphics.Batch()
         self.ui_batch = pyglet.graphics.Batch()
+
+        # 地形（地面格子）持久化缓存：地面是静态的，复用固定的 shape 池并按需
+        # 更新位置/颜色，避免每帧新建上千个 shapes 导致帧率骤降。
+        self.terrain_batch = None
+        self._terrain_pool = []      # 复用的地面格子 shapes（数量 = 可视格子数）
+        self._pool_cols = 0
+        self._pool_rows = 0
+        self._tcache = {}            # (wx,wy) -> 地面颜色 缓存
 
         self.current_slot = 1
         self._populate_spawn = True
@@ -362,32 +376,77 @@ class Game:
     # 渲染
     # ==================================================================
     def render(self):
-        # 窗口已由 main.py 的 @window.event on_draw 负责 clear()，
-        # 此处只绘制内容（仿 asteroid.py：on_draw 里 clear + main_batch.draw()）。
-        # 注意：draw_util 内部已对所有 shapes/Label 做引用保活（_KEEP），
-        # 因此每帧重建 batch 也不会被 GC 导致画不出内容。
+        # 窗口已由 main.py 的 @window.event on_draw 负责 clear()。
+        # 统一整个项目使用「左上原点、Y 向下」坐标（见 config 注释）；
+        # draw_util 会据此把 shapes/Label 翻转到 pyglet 的左下原点坐标。
+        set_viewport_h(self.height)
+        # 清空并重新收集本帧基元（既能防 GC 画出内容，又避免跨帧累积内存泄漏）。
+        begin_frame()
+        # 每帧重建 ui_batch / world_batch，避免 shapes 无限累积导致残留与卡顿。
+        self.ui_batch = pyglet.graphics.Batch()
         if self.mode == "playing":
             self._draw_world()
             self._draw_hud()
         else:
-            self.ui_batch = pyglet.graphics.Batch()
             if self.current_menu:
                 self.current_menu.draw(self.ui_batch)
         self.ui_batch.draw()
 
+    def _tile_color(self, wx, wy):
+        """返回世界格子 (wx,wy) 的地面颜色；非可走/未生成则 None。结果带缓存。"""
+        if len(self._tcache) > 8192:      # 防止探索太久缓存无限增长
+            self._tcache.clear()
+        k = (wx, wy)
+        c = self._tcache.get(k, _MISS)
+        if c is _MISS:
+            chunk = self.world.get_chunk((wx // _CHUNK) * _CHUNK,
+                                         (wy // _CHUNK) * _CHUNK, 0)
+            if chunk is None or not chunk.tiles:
+                c = None
+            else:
+                biome = REGISTRY.get("biome", chunk.biome) or {}
+                ground = biome.get("colors", {}).get("ground", (90, 140, 70))
+                edge = biome.get("colors", {}).get("edge", (60, 110, 45))
+                walk = self.world.is_walkable(wx, wy)
+                c = ground if walk else edge
+            self._tcache[k] = c
+        return c
+
+    def _update_terrain(self):
+        """复用持久形状池，把每个屏幕格子的地面画出来（随镜头移动更新位置/颜色）。
+
+        每个屏幕格子对应一个复用的 Rectangle；每帧仅更新其 GL 位置与颜色，
+        避免了每帧新建上千个 shape 对象的巨大开销（CPU/GC 主因）。
+        """
+        T = config.TILE
+        W = self.width
+        H = self.height
+        cols = W // T + 1
+        rows = H // T + 1
+        need = cols * rows
+        # 首次或窗口尺寸变化时（重新）建立形状池
+        if self.terrain_batch is None or len(self._terrain_pool) != need:
+            self.terrain_batch = pyglet.graphics.Batch()
+            self._terrain_pool = []
+            for _ in range(need):
+                s = pyglet.shapes.Rectangle(0, 0, T, T, color=(0, 0, 0),
+                                            batch=self.terrain_batch)
+                s.visible = False
+                self._terrain_pool.append(s)
+            self._pool_cols = cols
+            self._pool_rows = rows
+
     def _draw_world(self):
+        # 动态层（采集物/实体/玩家/粒子/装饰）用每帧新 batch，避免累积
         self.world_batch = pyglet.graphics.Batch()
         p = self.player
         if not self.world or not p:
             return
 
-        # 绘制可视区块地面
-        vis_w, vis_h = config.Graphics.visible_tiles()
-        ccx, ccy, _ = self.world.chunk_coords(p.x, p.y)
-        for cx in range(ccx - 2, ccx + 3):
-            for cy in range(ccy - 2, ccy + 3):
-                chunk = self.world.get_chunk(cx * 16, cy * 16)
-                self._draw_chunk(chunk)
+        self._render_terrain_cells()
+
+        # 绘制装饰物（世界固定物，量少，每帧重建成本低）
+        self._draw_decor_layer()
 
         # 绘制采集物（叠加在地面上）
         self._draw_gather()
@@ -402,28 +461,68 @@ class Game:
         # 粒子
         self._draw_particles()
 
+        # 先画持久化地形，再画动态层（保证地形在下）
+        if self.terrain_batch is not None:
+            self.terrain_batch.draw()
         self.world_batch.draw()
 
-    def _draw_chunk(self, chunk):
-        ox, oy = chunk.world_origin()
-        biome = REGISTRY.get("biome", chunk.biome) or {}
-        ground = biome.get("colors", {}).get("ground", (90, 140, 70))
-        edge = biome.get("colors", {}).get("edge", (60, 110, 45))
-        for z, grid in (chunk.tiles or {}).items():
-            for ly, row in enumerate(grid):
-                for lx, tile in enumerate(row):
+    def _render_terrain_cells(self):
+        """按当前镜头把每个屏幕格子的地面画到持久形状池。"""
+        self._update_terrain()
+        T = config.TILE
+        W = self.width
+        H = self.height
+        cols = self._pool_cols
+        rows = self._pool_rows
+        pool = self._terrain_pool
+        cam = self.camera
+        idx = 0
+        for j in range(rows):
+            syc = (j + 0.5) * T
+            for i in range(cols):
+                sxc = (i + 0.5) * T
+                wx, wy = cam.screen_to_world(sxc, syc)
+                tx, ty = math.floor(wx), math.floor(wy)
+                color = self._tile_color(tx, ty)
+                s = pool[idx]
+                if color is None:
+                    if s.visible:
+                        s.visible = False
+                else:
+                    if not s.visible:
+                        s.visible = True
+                    # 屏幕左上原点坐标 -> GL 左下原点坐标
+                    x = i * T
+                    y_gl = H - (j + 1) * T
+                    if s.x != x or s.y != y_gl:
+                        s.position = (x, y_gl)
+                    if s.color[0] != color[0] or s.color[1] != color[1] or s.color[2] != color[2]:
+                        s.color = color
+                idx += 1
+
+    def _draw_decor_layer(self):
+        """绘制可见区块的装饰物（世界固定物）。"""
+        p = self.player
+        if not p or not self.world:
+            return
+        T = config.TILE
+        W = self.width
+        H = self.height
+        CS = _CHUNK
+        ccx, ccy, _ = self.world.chunk_coords(p.x, p.y)
+        for cx in range(ccx - 2, ccx + 3):
+            for cy in range(ccy - 2, ccy + 3):
+                chunk = self.world.get_chunk(cx * CS, cy * CS)
+                if not chunk.decor:
+                    continue
+                ox, oy = chunk.world_origin()
+                for (lx, ly), decor in chunk.decor.items():
                     x = ox + lx
                     y = oy + ly
-                    color = ground if self.world.is_walkable(x, y) else edge
-                    sx, sy = self.camera.world_to_screen(x, y)
-                    add_rect(self.world_batch, sx, sy, config.TILE, config.TILE, color)
-        # 装饰物
-        for (lx, ly), decor in chunk.decor.items():
-            x = ox + lx
-            y = oy + ly
-            sx, sy = self.camera.world_to_screen(x + 0.5, y + 0.5)
+                    sx, sy = self.camera.world_to_screen(x + 0.5, y + 0.5)
+                    if sx < -32 or sy < -32 or sx > W + 32 or sy > H + 32:
+                        continue
             self._draw_decor(sx, sy, decor)
-        # 采集物标记点已在 _draw_gather 处理
 
     def _draw_decor(self, sx, sy, decor):
         color = {"tree": (60, 110, 50), "bush": (70, 140, 60), "flower": (220, 120, 180),
@@ -437,6 +536,8 @@ class Game:
         p = self.player
         if not p or not self.world:
             return
+        W = self.width
+        H = self.height
         ccx, ccy, _ = self.world.chunk_coords(p.x, p.y)
         for cx in range(ccx - 2, ccx + 3):
             for cy in range(ccy - 2, ccy + 3):
@@ -448,6 +549,8 @@ class Game:
                     wx = ox + lx + 0.5
                     wy = oy + ly + 0.5
                     sx, sy = self.camera.world_to_screen(wx, wy)
+                    if sx < -32 or sy < -32 or sx > W + 32 or sy > H + 32:
+                        continue
                     g = REGISTRY.get("gather", gid)
                     icon = g.get("icon", "log") if g else "log"
                     color = R.IconCache().color_of(icon)
@@ -612,11 +715,15 @@ class Game:
         p.move(step * 0.05, 0, self.world, 1)
 
     def on_mouse_motion(self, x, y, dx, dy):
+        # pyglet 鼠标 y 是左下原点向上；统一转换为项目「左上 Y 向下」坐标
+        y = self.height - y
         self._mouse = (x, y)
         if self.mode != "playing" and self.current_menu:
             self.current_menu.motion(x, y)
 
     def on_mouse_press(self, x, y, button, modifiers):
+        # pyglet 鼠标 y 是左下原点向上；统一转换为项目「左上 Y 向下」坐标
+        y = self.height - y
         if self.mode != "playing" and self.current_menu:
             self.current_menu.click(x, y)
         elif self.mode == "playing":
