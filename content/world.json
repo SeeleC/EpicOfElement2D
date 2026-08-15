@@ -1,0 +1,47 @@
+{
+  "meta": {
+    "name": "世界 / 生物群系数据包",
+    "version": "0.1.0",
+    "desc": "卡兰德大陆的生物群系与城镇定义。地图格子由引擎按 biome 生成。"
+  },
+
+  "biome": [
+    { "id": "noel_village", "name": "诺尔村",
+      "tile": "grass", "wall": "none",
+      "colors": { "ground": [86, 140, 60], "edge": [60, 110, 45] },
+      "decor": ["tree", "bush", "flower", "rock"],
+      "spawns": ["wild_boar", "big_wild_boar", "mega_crab"],
+      "gather": ["birch_log", "magnet_powder", "wheat", "sweet_herb"],
+      "is_town": true,
+      "town_npc": ["quest_master", "blacksmith", "alchemist", "merchant"],
+      "desc": "冒险者的起点村庄。" },
+
+    { "id": "noel_mountain", "name": "诺尔山脉",
+      "tile": "rock", "wall": "mountain",
+      "colors": { "ground": [120, 116, 110], "edge": [88, 84, 80] },
+      "decor": ["pine", "rock", "cave"],
+      "spawns": ["rock_beast"],
+      "gather": [],
+      "is_town": false,
+      "desc": "陡峭的山脉地带。" },
+
+    { "id": "frantia", "name": "弗朗蒂亚",
+      "tile": "snow", "wall": "none",
+      "colors": { "ground": [220, 228, 235], "edge": [185, 195, 205] },
+      "decor": ["pine", "snow_rock", "crystal"],
+      "spawns": ["mountain_goat", "snow_man", "frost_beast", "frost_rock_beast"],
+      "gather": ["green_wood", "grey_iron"],
+      "is_town": true,
+      "town_npc": ["quest_master", "blacksmith", "alchemist", "merchant"],
+      "desc": "大陆中部冰雪覆盖的要塞城。" },
+
+    { "id": "polluted", "name": "斯兰污染地区",
+      "tile": "waste", "wall": "none",
+      "colors": { "ground": [70, 80, 90], "edge": [45, 55, 65] },
+      "decor": ["dead_tree", "slime_pool"],
+      "spawns": ["polluted_slime"],
+      "gather": [],
+      "is_town": false,
+      "desc": "被黑色以太污染的废土。" }
+  ]
+}

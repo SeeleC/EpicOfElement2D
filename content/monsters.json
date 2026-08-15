@@ -1,0 +1,63 @@
+{
+  "meta": {
+    "name": "怪物图鉴数据包",
+    "version": "0.1.0",
+    "desc": "还原 wiki 怪物图鉴的怪物属性、所在地与掉落。数值按血量等级适配 2D 场景。"
+  },
+
+  "monster": [
+    { "id": "wild_boar",     "name": "野猪", "biome": "noel_village", "lvl": 1,
+      "hp": 200, "attack": 12, "speed": 2.2, "exp": 12, "gold": [2, 5],
+      "icon": "boar", "aggressive": true,
+      "drops": [ { "id": "wildboar_hide", "rate": 0.6 }, { "id": "wildboar_tusk", "rate": 0.4 }, { "id": "wildboar_meat", "rate": 0.5 } ],
+      "desc": "诺尔村草地上的常见野猪。" },
+
+    { "id": "big_wild_boar", "name": "大野猪", "biome": "noel_village", "lvl": 3,
+      "hp": 2000, "attack": 22, "speed": 2.0, "exp": 40, "gold": [10, 20],
+      "icon": "boar", "boss": "mini", "aggressive": true,
+      "drops": [ { "id": "wildboar_hide", "rate": 1.0 }, { "id": "wildboar_tusk", "rate": 0.8 } ],
+      "desc": "体型硕大的精英野猪。" },
+
+    { "id": "rock_beast",    "name": "岩脊兽", "biome": "noel_mountain", "lvl": 2,
+      "hp": 600, "attack": 16, "speed": 1.6, "exp": 25, "gold": [5, 12],
+      "icon": "rock_beast", "aggressive": true,
+      "drops": [ { "id": "rock_steel", "rate": 0.5 }, { "id": "rock_beast_shell", "rate": 0.4 } ],
+      "desc": "身上长满岩钢的魔兽。" },
+
+    { "id": "polluted_slime","name": "污染生物", "biome": "polluted", "lvl": 2,
+      "hp": 400, "attack": 14, "speed": 1.8, "exp": 22, "gold": [3, 8],
+      "icon": "slime", "aggressive": true,
+      "drops": [ { "id": "polluted_poly", "rate": 0.8 } ],
+      "desc": "沾染黑色以太的变异生物。" },
+
+    { "id": "mega_crab",     "name": "诺尔之灾·巨型螃蟹", "biome": "noel_village", "lvl": 8, "elite": true,
+      "hp": 8000, "attack": 40, "speed": 1.6, "exp": 200, "gold": [60, 100],
+      "icon": "crab", "boss": true, "aggressive": true,
+      "drops": [ { "id": "giant_crab_orb", "rate": 1.0 } ],
+      "desc": "诺尔村附近出没的区域首领。" },
+
+    { "id": "mountain_goat", "name": "高原羊", "biome": "frantia", "lvl": 4,
+      "hp": 600, "attack": 10, "speed": 2.4, "exp": 30, "gold": [8, 15],
+      "icon": "goat", "peaceful": true,
+      "drops": [ { "id": "highland_wool", "rate": 0.6 }, { "id": "ram_horn", "rate": 0.3 } ],
+      "desc": "弗朗蒂亚高原上的温顺山羊。" },
+
+    { "id": "snow_man",      "name": "雪山怪人", "biome": "frantia", "lvl": 3,
+      "hp": 360, "attack": 15, "speed": 2.0, "exp": 28, "gold": [5, 10],
+      "icon": "snowman", "aggressive": true,
+      "drops": [ { "id": "snow_tear", "rate": 0.5 }, { "id": "snow_essence", "rate": 0.3 } ],
+      "desc": "游荡在雪原的怪人。" },
+
+    { "id": "frost_beast",   "name": "风雪兽", "biome": "frantia", "lvl": 5,
+      "hp": 960, "attack": 25, "speed": 2.2, "exp": 60, "gold": [12, 25],
+      "icon": "beast", "aggressive": true,
+      "drops": [ { "id": "snow_fur", "rate": 0.5 }, { "id": "snow_tail", "rate": 0.3 } ],
+      "desc": "能驱使风雪之力的野兽。" },
+
+    { "id": "frost_rock_beast", "name": "霜冻岩脊兽", "biome": "frantia", "lvl": 6,
+      "hp": 1800, "attack": 35, "speed": 1.7, "exp": 90, "gold": [20, 40],
+      "icon": "rock_beast", "aggressive": true,
+      "drops": [ { "id": "cold_iron", "rate": 0.5 }, { "id": "frost_shell", "rate": 0.4 } ],
+      "desc": "覆盖寒霜的岩脊兽。" }
+  ]
+}

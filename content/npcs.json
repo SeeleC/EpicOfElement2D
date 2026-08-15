@@ -1,0 +1,39 @@
+{
+  "meta": {
+    "name": "NPC/交互数据包",
+    "version": "0.1.0",
+    "desc": "城镇中的商人、铁匠、炼金师、任务NPC 等。行为由 engine 通用系统解释。"
+  },
+
+  "npc": [
+    { "id": "quest_master", "name": "任务指引官林克", "town": "frantia",
+      "role": "quest", "icon": "npc",
+      "dialog": {
+        "greet": "冒险者，你终于来了。听闻深渊魔殿的灾厄正在苏醒……",
+        "quest_start": "先去锻造些装备，再去诺尔山脉清除野猪，回报可获赫勒。",
+        "quest_end": "干得漂亮！这是你的奖励，继续变强吧。"
+      },
+      "quests": ["tutorial"],
+      "desc": "主城的任务NPC。" },
+
+    { "id": "blacksmith", "name": "铁匠老王", "town": "frantia",
+      "role": "blacksmith", "icon": "npc",
+      "dialog": { "greet": "需要锻造装备，还是强化？把你的材料交给我吧。" },
+      "services": ["forge", "repair", "upgrade", "sell_tools"],
+      "sells": ["wood_axe", "wood_pick", "wood_sickle", "stone_axe"],
+      "desc": "打造装备、强化装备、出售工具。" },
+
+    { "id": "alchemist", "name": "炼金师玛莉", "town": "frantia",
+      "role": "alchemist", "icon": "npc",
+      "dialog": { "greet": "想调配药剂？用炼药锅，材料要放得精准。" },
+      "services": ["alchemy"],
+      "sells": ["small_hp_pot", "small_mp_pot", "hp_pot_2"],
+      "desc": "出售药水，教授炼药。" },
+
+    { "id": "merchant", "name": "商人格拉德", "town": "frantia",
+      "role": "merchant", "icon": "npc",
+      "dialog": { "greet": "欢迎光临！赫勒在这畅通无阻~" },
+      "services": ["buy", "sell"],
+      "desc": "买卖杂货。" }
+  ]
+}

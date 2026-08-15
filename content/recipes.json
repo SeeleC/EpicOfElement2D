@@ -1,0 +1,26 @@
+{
+  "meta": {
+    "name": "配方数据包",
+    "version": "0.1.0",
+    "desc": "炼药、烹饪与锻造配方。炼药强调材料『精准』与『时机』。"
+  },
+
+  "recipe": [
+    { "id": "craft_small_hp", "kind": "alchemy", "result": "small_hp_pot", "count": 8, "station": "cauldron",
+      "inputs": { "sweet_herb": 1, "water": 2 }, "success_rate": 0.9,
+      "note": "简化占位：真实炼药要求精确材料的时机。" },
+    { "id": "craft_small_mp", "kind": "alchemy", "result": "small_mp_pot", "count": 8, "station": "cauldron",
+      "inputs": true, "note": "魔力药水配方占位。" },
+
+    { "id": "craft_bread", "kind": "cooking", "result": "bread", "count": 3, "station": "cauldron",
+      "cook_time": 8, "inputs": true, "note": "小麦烘焙。" },
+    { "id": "craft_grilled_meat", "kind": "cooking", "result": "grilled_meat", "count": 2, "station": "cauldron",
+      "cook_time": 12, "inputs": { "wildboar_meat": 1 }, "note": "野猪肉烤制。" },
+
+    { "id": "forge_wood_sword", "kind": "forging", "result": "wood_sword", "count": 1, "station": "forge",
+      "inputs": { "wood_log": 4 }, "gold": 10, "note": "铁匠锻造武器。" },
+    { "id": "forge_rusty_sword", "kind": "forging", "result": "rusty_sword", "count": 1, "station": "forge",
+      "inputs": { "iron_ingot": 3 }, "gold": 60, "note": "铁匠锻造武器。" }
+  ]
+}
+

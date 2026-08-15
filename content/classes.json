@@ -1,0 +1,78 @@
+{
+  "meta": {
+    "name": "职业数据包",
+    "version": "0.1.0",
+    "desc": "四大基础职业定义。每个职业包含基础属性、资源类型与进阶分支。"
+  },
+
+  "class": [
+    {
+      "id": "swordsman",
+      "name": "剑士",
+      "icon": "sword",
+      "role": "近战输出/前排",
+      "resource": "stance",
+      "desc": "输出与生存较为均衡的前排战士。独特的【格挡】机制需要良好把握防御时机。",
+      "advance": ["swordmaster", "magic_swordsman"],
+      "base_stats": { "hp": 120, "attack": 14, "defense": 5, "crit_rate": 0.05, "crit_damage": 1.5, "move_speed": 3.4 },
+      "per_level":  { "hp": 26, "attack": 2.2, "defense": 0.9 },
+      "skills": ["parry", "sweep", "uppercut", "heavy_slash", "charge", "spin"],
+
+      "mechanics": {
+        "type": "block",
+        "desc": "按空格进入招架姿态0.75s，成功后完全抵挡伤害并强化技能、回复10架架势。"
+      }
+    },
+    {
+      "id": "knight",
+      "name": "骑士",
+      "icon": "shield",
+      "role": "坦克/前排",
+      "resource": "stance",
+      "desc": "拥有更高血量与减伤的前排坦克，依靠盾牌和仇恨机制保护队友，大招无敌。",
+      "advance": ["paladin", "azure_knight"],
+      "base_stats": { "hp": 180, "attack": 10, "defense": 8, "crit_rate": 0.03, "crit_damage": 1.4, "move_speed": 3.0, "block_reduce": 0.05 },
+      "per_level":  { "hp": 38, "attack": 1.6, "defense": 1.3 },
+      "skills": ["restrain", "shield_bash", "whirl", "ram_hammer", "song_battle", "war_cry"],
+
+      "mechanics": {
+        "type": "taunt",
+        "desc": "技能命中产生仇恨，守护队友；大招可进入无敌状态抵御致命一击。"
+      }
+    },
+    {
+      "id": "mage",
+      "name": "法师",
+      "icon": "staff",
+      "role": "远程AOE/辅助",
+      "resource": "mana",
+      "desc": "多段远程与范围伤害的后排AOE核心，具备治疗与负面状态能力。",
+      "advance": ["elementalist", "bard"],
+      "base_stats": { "hp": 85, "attack": 8, "magic": 18, "defense": 3, "crit_rate": 0.05, "crit_damage": 1.5, "move_speed": 3.0, "mana": 120 },
+      "per_level":  { "hp": 15, "magic": 2.8, "attack": 0.8 },
+      "skills": ["fireball", "ice_spear", "heal_light", "water_column", "thunder_storm", "blizzard"],
+
+      "mechanics": {
+        "type": "mana",
+        "desc": "使用法力值施放技能；拥有治疗与减速、击飞等控制能力。"
+      }
+    },
+    {
+      "id": "ranger",
+      "name": "游侠",
+      "icon": "bow",
+      "role": "远程输出C位",
+      "resource": "mana",
+      "desc": "极高单体/范围输出的远程射手，拥有破防技能与翻滚机动。",
+      "advance": ["windwalker", "shadow_dancer"],
+      "base_stats": { "hp": 90, "attack": 12, "magic": 4, "defense": 3, "crit_rate": 0.08, "crit_damage": 1.6, "move_speed": 3.8, "mana": 100 },
+      "per_level":  { "hp": 17, "attack": 2.4, "magic": 0.5 },
+      "skills": ["multi_shot", "retreat_shot", "wind_blade", "rapid_arrow", "hunting_trap", "pierce_arrow"],
+
+      "mechanics": {
+        "type": "range",
+        "desc": "远程蓄力射击，拥有破防减益，翻滚闪避保命。"
+      }
+    }
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "meta": {
+    "name": "任务数据包",
+    "version": "0.1.0",
+    "desc": "主线/支线/奇遇任务定义。任务进度与奖励皆可经由 JSON 扩展。"
+  },
+
+  "quest": [
+    {
+      "id": "tutorial",
+      "name": "初探卡兰德",
+      "type": "main",
+      "giver": "quest_master",
+      "desc": "击杀诺尔山脉的岩脊兽，收集岩钢交给铁匠，学习锻造。",
+      "objectives": [
+        { "type": "kill", "target": "rock_beast", "count": 3 },
+        { "type": "gather", "target": "rock_steel", "count": 2 }
+      ],
+      "requirements": { "level": 1 },
+      "rewards": { "gold": 100, "exp": 50, "items": [ { "id": "rusty_sword", "count": 1 } ] }
+    },
+    {
+      "id": "farmer_ring",
+      "name": "农夫的私房钱",
+      "type": "side",
+      "giver": "merchant",
+      "desc": "帮助诺尔村的农夫找回遗失的财物。奖励：奇怪的戒指。",
+      "objectives": [ { "type": "gather", "target": "dirty_sack", "count": 1 } ],
+      "requirements": { "level": 3 },
+      "rewards": { "gold": 50, "exp": 30, "items": [ { "id": "bad_ring", "count": 1 } ] }
+    },
+    {
+      "id": "deep_abyss",
+      "name": "深渊魔殿",
+      "type": "main",
+      "giver": "quest_master",
+      "desc": "击败深渊魔殿的首领，终结灾厄。",
+      "objectives": [ { "type": "kill", "target": "abyss_lord", "count": 1 } ],
+      "requirements": { "level": 20 },
+      "rewards": { "gold": 5000, "exp": 5000 }
+    }
+  ]
+}

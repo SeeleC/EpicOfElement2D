@@ -1,0 +1,63 @@
+{
+  "meta": {
+    "name": "元素之诗：灾厄 - 基础物品数据包",
+    "version": "0.1.0",
+    "desc": "定义游戏内所有物品：材料、工具、药水、食物、货币。"
+  },
+
+  "item": [
+    { "id": "coin",          "name": "赫勒",            "type": "currency", "icon": "coin",   "stack": 9999, "desc": "大陆通用货币。" },
+    { "id": "wildboar_hide", "name": "野猪皮",          "type": "material", "icon": "hide",   "stack": 999,  "desc": "野猪掉落的皮革。" },
+    { "id": "wildboar_tusk", "name": "野猪牙",          "type": "material", "icon": "tusk",   "stack": 999,  "desc": "野猪掉落的牙齿。" },
+    { "id": "wildboar_meat", "name": "野猪肉",          "type": "material", "icon": "meat",   "stack": 999,  "desc": "可烹饪的野猪肉。" },
+    { "id": "rock_steel",    "name": "岩钢",            "type": "material", "icon": "ore",    "stack": 999,  "desc": "岩脊兽身上的坚硬矿质。" },
+    { "id": "polluted_poly", "name": "污浊聚合物",      "type": "material", "icon": "slime",  "stack": 999,  "desc": "污染生物掉落的粘稠物质。" },
+    { "id": "iron_ingot",    "name": "铁锭",            "type": "material", "icon": "ingot",  "stack": 999,  "desc": "采集铁矿石冶炼而成。" },
+    { "id": "wood_log",      "name": "原木",            "type": "material", "icon": "log",    "stack": 999,  "desc": "伐木斧砍伐获得的基础木材。" },
+
+    { "id": "wood_axe",      "name": "木斧",            "type": "tool",   "tool": "axe",    "dur": 59,  "icon": "axe",    "price": 40,  "desc": "基础伐木工具。耐久59。" },
+    { "id": "wood_pick",     "name": "木镐",            "type": "tool",   "tool": "pick",   "dur": 59,  "icon": "pick",   "price": 40,  "desc": "基础采矿工具。耐久59。" },
+    { "id": "wood_sickle",   "name": "木镰",            "type": "tool",   "tool": "sickle", "dur": 59,  "icon": "sickle", "price": 40,  "desc": "基础采集工具。耐久59。" },
+    { "id": "stone_axe",     "name": "石斧",            "type": "tool",   "tool": "axe",    "dur": 131, "icon": "axe",    "price": 80,  "lvl": 2, "desc": "石制伐木工具。耐久131。" },
+
+    { "id": "small_hp_pot",  "name": "小瓶生命药水",    "type": "consumable", "use": "heal", "heal": 300, "icon": "potion", "stack": 50, "price": 1,   "lvl": 1, "desc": "回复 300 生命值。" },
+    { "id": "small_mp_pot",  "name": "小瓶魔力药水",    "type": "consumable", "use": "mana", "mana": 30,  "icon": "potion", "stack": 50, "price": 1,   "lvl": 1, "desc": "回复 30 法力值。" },
+    { "id": "hp_pot_2",      "name": "浓稠生命药水",    "type": "consumable", "use": "heal", "heal": 600, "icon": "potion", "stack": 50, "price": 3,   "lvl": 2, "desc": "回复 600 生命值。" },
+    { "id": "bread",         "name": "烤面包",          "type": "food",     "use": "food", "hot": 300, "icon": "food", "stack": 50, "price": 2,   "lvl": 1, "desc": "60秒内缓慢回复300生命值。" },
+    { "id": "grilled_meat",  "name": "烤肉",            "type": "food",     "use": "food", "hot": 720, "icon": "food", "stack": 50, "price": 6,   "lvl": 2, "desc": "60秒内缓慢回复720生命值。" }
+  ],
+
+  "equipment": [
+    { "id": "wood_sword",    "name": "木剑",            "slot": "main_hand", "quality": "common",
+      "stats": { "attack": 5, "crit_rate": 0.02 },            "hand": true,
+      "icon": "sword", "price": 30, "desc": "新手探险者的第一把剑。" },
+
+    { "id": "rusty_sword",   "name": "生锈铁剑",        "slot": "main_hand", "quality": "common",
+      "stats": { "attack": 12, "crit_rate": 0.03 },           "hand": true,
+      "icon": "sword", "price": 120, "desc": "用来久矣的剑，仍可一战。" },
+
+    { "id": "rock_cuirass",  "name": "岩甲",            "slot": "body", "quality": "rare",
+      "stats": { "hp": 80, "defense": 6 },                   "armor": true,
+      "icon": "armor", "price": 300, "desc": "岩脊兽之壳打造的护甲。" },
+
+    { "id": "leather_cap",   "name": "皮革帽",          "slot": "head", "quality": "common",
+      "stats": { "hp": 30, "defense": 2 },                   "armor": true,
+      "icon": "helmet", "price": 60, "desc": "野猪皮缝制的帽子。" },
+
+    { "id": "oak_shield",    "name": "橡木盾",          "slot": "off_hand", "quality": "common",
+      "stats": { "defense": 4, "block_reduce": 0.08 },       "shield": true,
+      "icon": "shield", "price": 90, "desc": "骑士使用的基础盾牌，提供格挡减伤。" }
+  ],
+
+  "trinket": [
+    { "id": "rock_guard_trinket", "name": "岩石加护",   "slot": "trinket", "lvl": 6, "quality": "rare",
+      "stats": { "hp": 258, "flat_reduce": 42 },              "icon": "ring",
+      "desc": "装备锻造。生命 +228~288，固定减伤 +38~48。" },
+    { "id": "bad_ring",           "name": "奇怪的戒指",  "slot": "trinket", "lvl": 4, "quality": "common",
+      "stats": { "hp": 330, "hp_regen": 6 },                 "icon": "ring",
+      "desc": "来自于农夫的私房钱任务。" },
+    { "id": "wolf_charm",         "name": "瓦尔兰德的意志", "slot": "trinket", "lvl": 7, "quality": "rare",
+      "stats": { "pve_damage": 0.05, "hp_regen": 15 },      "icon": "ring",
+      "desc": "获得于高原奇遇。" }
+  ]
+}

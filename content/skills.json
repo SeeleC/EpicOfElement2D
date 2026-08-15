@@ -1,0 +1,120 @@
+{
+  "meta": {
+    "name": "技能数据包",
+    "version": "0.1.0",
+    "desc": "四大职业的技能定义，数值尽量还原 wiki 描述。伤害数组按技能等级成长。"
+  },
+
+  "skill": [
+    { "id": "parry", "class": "swordsman", "name": "招架", "type": "defense", "cd": 0.0, "cost": 20,
+      "stance": "block", "desc": "进入招架姿态0.75s，成功抵挡非真实伤害并强化部分技能。" },
+
+    { "id": "sweep", "class": "swordsman", "name": "横一字斩", "type": "melee", "cd": 6.0, "range": 5,
+      "damages": [150,165,180,195,210,225,250], "hit_flat": [0,38,76,114,152,190,228],
+      "mechanics": ["draw_stance","knockdown_after_parry"], "desc": "横扫前方，进入拔剑姿态，命中+10架势。" },
+
+    { "id": "uppercut", "class": "swordsman", "name": "上撩斩", "type": "melee", "cd": 10.0, "range": 5,
+      "damages": [130,143,156,169,182,195,208], "hit_flat": [0,38,76,114,152,190,228],
+      "float": 2, "mechanics": ["float"], "desc": "挑飞敌人2s；拔剑姿态下以剑气斩出并爆炸。" },
+
+    { "id": "heavy_slash", "class": "swordsman", "name": "重劈", "type": "melee", "cd": 10.0, "range": 5,
+      "damages": [160,176,192,208,224,240,256], "hit_flat": [0,48,96,144,192,240,288],
+      "stagger": true, "mechanics": ["crush"], "desc": "劈入地面，浮空敌人砸地产生冲击波。霸体。" },
+
+    { "id": "charge", "class": "swordsman", "name": "破军", "type": "dash", "cd": 8.0,
+      "damages": [60,66,72,78,84,90,96], "hit_flat": [0,48,96,144,192,240,288],
+      "mechanics": ["charge_through"], "desc": "向前冲刺，冲撞敌人。霸体。" },
+
+    { "id": "spin", "class": "swordsman", "name": "回斩", "type": "melee", "cd": 2.0, "cost": 6,
+      "damages": [120,132,144,156,168,180,192], "hit_flat": [0,48,96,144,192,240,288],
+      "mechanics": ["backstep_strike"], "desc": "后撤一步回身斩击周围敌人。" },
+
+    { "id": "restrain", "class": "knight", "name": "牵制斩", "type": "melee", "cd": 6.0, "range": 5,
+      "cost": 20, "damages": [120,132,144,156,168,180,192], "hit_flat": [0,60,120,180,240,300,360],
+      "taunt": true, "debuff": "restrain", "mechanics": ["slow_if_restrained"], "desc": "施加牵制状态；目标已在牵制则大幅减速5s。" },
+
+    { "id": "shield_bash", "class": "knight", "name": "里拳攻击", "type": "melee", "cd": 6.0, "range": 4,
+      "cost": 20, "damages": [120,132,144,156,168,180,192], "hit_flat": [0,60,120,180,240,300,360],
+      "taunt": true, "float": 3, "stagger": true, "desc": "盾牌猛砸，敌人已牵制则浮空3s。霸体。" },
+
+    { "id": "whirl", "class": "knight", "name": "回旋斩", "type": "melee", "cd": 12.0, "range": 5,
+      "damages": [120,132,144,156,168,180,192], "hit_flat": [0,56,112,168,224,280,336],
+      "double": true, "knockback": true, "mechanics": ["extra_vs_float"], "desc": "两段斩击击退；对浮空目标额外伤害。霸体。" },
+
+    { "id": "ram_hammer", "class": "knight", "name": "突进强槌", "type": "dash", "cd": 12.0, "range": 4,
+      "damages": [180,198,216,234,252,270,288], "hit_flat": [0,48,96,144,192,240,288],
+      "slow": 2, "mechanics": ["after_shock"], "desc": "冲刺后砸地，范围减速2s。霸体。" },
+
+    { "id": "song_battle", "class": "knight", "name": "蓄力二连斩", "type": "melee", "cd": 15.0, "range": 5,
+      "damages": [100,110,120,130,140,150,160], "hit_flat": [0,0,0,0,0,0,0],
+      "second_damages": [150,175,190,205,220,235,250], "second_flat": [0,128,256,384,512,640,768],
+      "blocking": true, "mechanics": ["double_slash"], "desc": "蓄力格挡期间伤害，随后向上向下追砍。" },
+
+    { "id": "war_cry", "class": "knight", "name": "战吼", "type": "buff", "cd": 12.0, "range": 6,
+      "cost": 20, "damages": [120,132,144,156,168,180,192], "hit_flat": [0,60,120,180,240,300,360],
+      "taunt": true, "buff": { "damage_reduce": [0.20,0.25,0.30,0.35,0.40,0.45,0.45], "duration": 5 },
+      "mechanics": ["unstoppable"], "desc": "怒吼击飞敌人，获得伤害减免与霸体5s。" },
+
+    { "id": "fireball", "class": "mage", "name": "火球术", "type": "projectile", "cd": 6.0,
+      "costs": [20,25,30,35,40,45], "projectile": "fireball", "range": 4,
+      "damages": [108,120,132,144,156,168,180], "hit_flat": [0,48,96,144,192,240,288],
+      "burn": true, "desc": "发射火球，命中爆炸范围(4)伤害。" },
+
+    { "id": "ice_spear", "class": "mage", "name": "冰枪术", "type": "projectile", "cd": 10.0,
+      "costs": [15,19,23,27,31,35], "projectile": "ice_spear", "range": 2,
+      "damages": [108,120,132,144,156,168,180], "hit_flat": [0,48,96,144,192,240,288],
+      "slow": [1.5,1.8,2.1,2.4,2.7,3.0,3.3], "desc": "冰枪减速并穿透终点范围伤害。" },
+
+    { "id": "heal_light", "class": "mage", "name": "治愈之光", "type": "heal", "cd": 16.0,
+      "costs": [35,41,47,53,59,65], "range": 10,
+      "damages": [220,240,260,280,300,320,340], "hit_flat": [0,256,512,768,1024,1280,1536],
+      "heal": true, "desc": "治愈自身与周围友军。" },
+
+    { "id": "water_column", "class": "mage", "name": "水柱术", "type": "aoe", "cd": 10.0,
+      "costs": [30,36,42,48,54,60], "range": 4, "delay": 0.6,
+      "damages": [108,120,132,144,156,168,180], "hit_flat": [0,48,96,144,192,240,288],
+      "float": 2, "mechanics": ["float"], "desc": "延迟后水柱击飞2s。" },
+
+    { "id": "thunder_storm", "class": "mage", "name": "雷爆术", "type": "aura", "cd": 16.0,
+      "costs": [30,35,40,45,50,55], "range": 4, "hits": 12,
+      "damages": [28,31,34,37,40,43,46], "hit_flat": [0,10,20,30,40,50,60],
+      "detonate": { "damage": 220, "mechanics": ["knockback","immunity"] },
+      "desc": "环绕雷电12次攻击；再释放引爆击飞并免疫非真实伤害。" },
+
+    { "id": "blizzard", "class": "mage", "name": "暴风雪", "type": "aoe", "cd": 20.0,
+      "costs": [40,50,60,70,80,90], "range": 5, "hits": 12,
+      "damages": [66,72,78,84,90,98,106], "hit_flat": [0,22,44,66,88,110,132],
+      "slow": true, "mechanics": ["channeled"], "desc": "引导持续12次范围伤害并减速。" },
+
+    { "id": "multi_shot", "class": "ranger", "name": "多重射击", "type": "projectile", "cd": 8.0, "cost": 35,
+      "projectile": "arrow", "count": 5,
+      "damages": [130,143,156,169,182,195,208], "hit_flat": [38,76,114,152,190,228,266],
+      "falloff": 0.15, "mechanics": ["falloff"], "desc": "蓄力连发一排箭，多根命中额外箭伤害衰减。" },
+
+    { "id": "retreat_shot", "class": "ranger", "name": "后跃射击", "type": "dash", "cd": 12.0, "cost": 20,
+      "damages": [55,60,65,70,75,80,85], "hit_flat": [0,12,24,36,48,60,72],
+      "arrow_damage": [132,144,156,168,180,192,204], "arrow_flat": [0,18,36,54,72,90,108],
+      "triple": true, "desc": "前踢；未中射单箭，命中射三箭。" },
+
+    { "id": "wind_blade", "class": "ranger", "name": "风之刃", "type": "melee", "cd": 6.0, "cost": 12,
+      "damages": [165,180,195,210,225,240,255], "hit_flat": [38,76,114,152,190,228,266],
+      "debuff": "vulnerable", "debuff_dur": 3, "mark_damage": 0.20,
+      "armor_shatter": { "amount": [0.44,0.48,0.52,0.56,0.60,0.64,0.68] },
+      "desc": "标记易损3s，降低目标伤害减免并附加普攻伤害。" },
+
+    { "id": "rapid_arrow", "class": "ranger", "name": "连珠箭", "type": "projectile", "cd": 8.0, "cost": 25,
+      "projectile": "arrow", "count": 3,
+      "damages": [80,88,96,104,112,120,128], "hit_flat": [0,20,40,60,80,100,120],
+      "treated_as_attack": true, "desc": "快速射出三箭，视为普攻。" },
+
+    { "id": "hunting_trap", "class": "ranger", "name": "捕猎夹", "type": "trap", "cd": 10.0, "cost": 15,
+      "duration": 30,
+      "damages": [144,156,168,180,192,204], "hit_flat": [0,25,50,75,100,125],
+      "trigger": true, "desc": "放置陷阱存在30s，触发造成伤害。" },
+
+    { "id": "pierce_arrow", "class": "ranger", "name": "穿裂箭", "type": "projectile", "cd": 20.0, "cost": 40,
+      "projectile": "pierce_arrow", "range": 16,
+      "damages": [440,480,520,560,600,640], "hit_flat": [0,125,250,375,500,625],
+      "pierce": true, "desc": "蓄力发射贯穿16格的强力箭矢。" }
+  ]
+}

@@ -2,5 +2,7 @@
 __pycache__/
 wiki/
 .vscode/
+pyglet_example/
 *.pyc
 *.xml
+.idea/workspace.xml
