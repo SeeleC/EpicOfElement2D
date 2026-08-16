@@ -12,6 +12,7 @@ import random
 
 import pyglet
 from pyglet.window import key
+import pyglet.gl as gl
 
 from . import config
 from . import render as R
@@ -35,11 +36,10 @@ from .ui.hud import HUD
 from .ui.inventory_screen import InventoryScreen
 from .ui.dialog import DialogBox
 from .ui.menus import TitleMenu, ClassSelectMenu, SaveScreen, PauseMenu
+from .terrain import TerrainCache
 
 # 区块边长（与 world.CHUNK_SIZE 保持一致，避免与 config 耦合）
 _CHUNK = 16
-# 缓存“未命中”哨兵（用于区分 None 与未缓存）
-_MISS = object()
 
 
 class Game:
@@ -94,13 +94,13 @@ class Game:
         self.world_batch = pyglet.graphics.Batch()
         self.ui_batch = pyglet.graphics.Batch()
 
-        # 地形（地面格子）持久化缓存：地面是静态的，复用固定的 shape 池并按需
-        # 更新位置/颜色，避免每帧新建上千个 shapes 导致帧率骤降。
-        self.terrain_batch = None
-        self._terrain_pool = []      # 复用的地面格子 shapes（数量 = 可视格子数）
-        self._pool_cols = 0
-        self._pool_rows = 0
-        self._tcache = {}            # (wx,wy) -> 地面颜色 缓存
+        # 静态地形层：每个区块烘焙成一张贴图并缓存（饥荒式精细地面 + 高性能）。
+        # 替代旧版“每帧重建上千个地面色块 shape”的做法，保持原性能优化策略。
+        self.terrain = TerrainCache(capacity=96)
+        self._warm_chunks = set()  # 已预热的区块
+        # 垫底色：保留引用，避免每帧新建 shape 造成 GC/卡顿
+        self._terrain_bg = pyglet.shapes.Rectangle(0, 0, self.width, self.height,
+                                                   color=(58, 108, 168))
 
         self.current_slot = 1
         self._populate_spawn = True
@@ -137,6 +137,8 @@ class Game:
     def new_game(self, klass_id):
         config.init_dirs()
         self.world = World(seed=random.randint(0, 2**31))
+        self._warm_chunks.clear()
+        self.terrain.clear()
         self.player = Player(8.0, 8.0)
         self.player.klass = klass_id
         self.player.auto_level_base_stats()
@@ -265,6 +267,7 @@ class Game:
         self.world.entities[:] = [e for e in self.world.entities if e.alive]
 
         self.particles.update(dt)
+        self._warm_terrain()
         self.camera.update(dt)
 
     # ------------------------------------------------------------------
@@ -392,120 +395,28 @@ class Game:
                 self.current_menu.draw(self.ui_batch)
         self.ui_batch.draw()
 
-    def _tile_color(self, wx, wy):
-        """返回世界格子 (wx,wy) 的地面颜色；非可走/未生成则 None。结果带缓存。"""
-        if len(self._tcache) > 8192:      # 防止探索太久缓存无限增长
-            self._tcache.clear()
-        k = (wx, wy)
-        c = self._tcache.get(k, _MISS)
-        if c is _MISS:
-            chunk = self.world.get_chunk((wx // _CHUNK) * _CHUNK,
-                                         (wy // _CHUNK) * _CHUNK, 0)
-            if chunk is None or not chunk.tiles:
-                c = None
-            else:
-                biome = REGISTRY.get("biome", chunk.biome) or {}
-                ground = biome.get("colors", {}).get("ground", (90, 140, 70))
-                edge = biome.get("colors", {}).get("edge", (60, 110, 45))
-                walk = self.world.is_walkable(wx, wy)
-                c = ground if walk else edge
-            self._tcache[k] = c
-        return c
-
-    def _update_terrain(self):
-        """复用持久形状池，把每个屏幕格子的地面画出来（随镜头移动更新位置/颜色）。
-
-        每个屏幕格子对应一个复用的 Rectangle；每帧仅更新其 GL 位置与颜色，
-        避免了每帧新建上千个 shape 对象的巨大开销（CPU/GC 主因）。
-        """
-        T = config.TILE
-        W = self.width
-        H = self.height
-        cols = W // T + 1
-        rows = H // T + 1
-        need = cols * rows
-        # 首次或窗口尺寸变化时（重新）建立形状池
-        if self.terrain_batch is None or len(self._terrain_pool) != need:
-            self.terrain_batch = pyglet.graphics.Batch()
-            self._terrain_pool = []
-            for _ in range(need):
-                s = pyglet.shapes.Rectangle(0, 0, T, T, color=(0, 0, 0),
-                                            batch=self.terrain_batch)
-                s.visible = False
-                self._terrain_pool.append(s)
-            self._pool_cols = cols
-            self._pool_rows = rows
-
     def _draw_world(self):
-        # 动态层（采集物/实体/玩家/粒子/装饰）用每帧新 batch，避免累积
+        # 动态层（装饰/采集/实体/玩家/粒子）用每帧新 batch，避免累积
         self.world_batch = pyglet.graphics.Batch()
         p = self.player
         if not self.world or not p:
             return
-
-        self._render_terrain_cells()
-
-        # 绘制装饰物（世界固定物，量少，每帧重建成本低）
+        # 1) 静态地面层（区块贴图，性能核心，先画保证在下层）
+        self._draw_terrain_textures()
+        # 2) 动态层
         self._draw_decor_layer()
-
-        # 绘制采集物（叠加在地面上）
         self._draw_gather()
-
-        # 绘制实体
         for e in sorted(self.world.entities, key=lambda e: e.y):
             self._draw_entity(e)
-
-        # 玩家
         self._draw_player()
-
-        # 粒子
         self._draw_particles()
-
-        # 先画持久化地形，再画动态层（保证地形在下）
-        if self.terrain_batch is not None:
-            self.terrain_batch.draw()
         self.world_batch.draw()
-
-    def _render_terrain_cells(self):
-        """按当前镜头把每个屏幕格子的地面画到持久形状池。"""
-        self._update_terrain()
-        T = config.TILE
-        W = self.width
-        H = self.height
-        cols = self._pool_cols
-        rows = self._pool_rows
-        pool = self._terrain_pool
-        cam = self.camera
-        idx = 0
-        for j in range(rows):
-            syc = (j + 0.5) * T
-            for i in range(cols):
-                sxc = (i + 0.5) * T
-                wx, wy = cam.screen_to_world(sxc, syc)
-                tx, ty = math.floor(wx), math.floor(wy)
-                color = self._tile_color(tx, ty)
-                s = pool[idx]
-                if color is None:
-                    if s.visible:
-                        s.visible = False
-                else:
-                    if not s.visible:
-                        s.visible = True
-                    # 屏幕左上原点坐标 -> GL 左下原点坐标
-                    x = i * T
-                    y_gl = H - (j + 1) * T
-                    if s.x != x or s.y != y_gl:
-                        s.position = (x, y_gl)
-                    if s.color[0] != color[0] or s.color[1] != color[1] or s.color[2] != color[2]:
-                        s.color = color
-                idx += 1
 
     def _draw_decor_layer(self):
         """绘制可见区块的装饰物（世界固定物）。"""
         p = self.player
         if not p or not self.world:
             return
-        T = config.TILE
         W = self.width
         H = self.height
         CS = _CHUNK
@@ -520,17 +431,47 @@ class Game:
                     x = ox + lx
                     y = oy + ly
                     sx, sy = self.camera.world_to_screen(x + 0.5, y + 0.5)
-                    if sx < -32 or sy < -32 or sx > W + 32 or sy > H + 32:
+                    if sx < -48 or sy < -48 or sx > W + 48 or sy > H + 48:
                         continue
-            self._draw_decor(sx, sy, decor)
+                    self._draw_decor(sx, sy, decor)
 
     def _draw_decor(self, sx, sy, decor):
-        color = {"tree": (60, 110, 50), "bush": (70, 140, 60), "flower": (220, 120, 180),
-                 "rock": (150, 150, 150), "pine": (40, 90, 60), "cave": (60, 60, 60),
-                 "dead_tree": (80, 60, 50), "crystal": (150, 200, 255),
-                 "snow_rock": (200, 210, 220), "slime_pool": (90, 160, 100)
-                 }.get(decor, (120, 120, 120))
-        add_rect(self.world_batch, sx-8, sy-8, 16, 16, color)
+        """用少量几何组合出「饥荒式」树木/灌木/岩石（量少，成本低）。"""
+        if decor == "tree":
+            add_rect(self.world_batch, sx - 2, sy - 6, 4, 10, (110, 75, 45))
+            add_circle(self.world_batch, sx, sy + 2, 9, (50, 105, 45))
+            add_circle(self.world_batch, sx - 4, sy + 1, 5, (60, 120, 52))
+            add_circle(self.world_batch, sx + 4, sy + 1, 5, (60, 120, 52))
+        elif decor == "pine":
+            add_rect(self.world_batch, sx - 2, sy - 6, 4, 9, (95, 65, 40))
+            add_circle(self.world_batch, sx, sy + 3, 7, (35, 80, 55))
+            add_circle(self.world_batch, sx, sy + 7, 5, (35, 90, 58))
+        elif decor == "bush":
+            add_circle(self.world_batch, sx, sy, 5, (60, 125, 55))
+            add_circle(self.world_batch, sx - 3, sy - 1, 3, (70, 140, 62))
+        elif decor == "rock":
+            add_rect(self.world_batch, sx - 6, sy - 8, 12, 7, (150, 150, 150))
+            add_rect(self.world_batch, sx - 3, sy - 5, 7, 4, (130, 130, 132))
+        elif decor == "snow_rock":
+            add_rect(self.world_batch, sx - 6, sy - 8, 12, 7, (205, 215, 225))
+            add_rect(self.world_batch, sx - 3, sy - 5, 7, 4, (180, 192, 205))
+        elif decor == "flower":
+            add_rect(self.world_batch, sx - 1, sy - 3, 2, 4, (70, 120, 50))
+            add_circle(self.world_batch, sx, sy + 1, 3, (225, 120, 185))
+        elif decor == "crystal":
+            add_rect(self.world_batch, sx - 4, sy - 8, 8, 8, (150, 200, 255))
+            add_rect(self.world_batch, sx - 2, sy - 4, 4, 4, (200, 230, 255))
+        elif decor == "dead_tree":
+            add_rect(self.world_batch, sx - 2, sy - 8, 4, 10, (90, 65, 50))
+            add_rect(self.world_batch, sx - 5, sy - 4, 4, 3, (90, 65, 50))
+        elif decor == "cave":
+            add_circle(self.world_batch, sx, sy, 6, (45, 45, 45))
+            add_circle(self.world_batch, sx, sy + 2, 4, (25, 25, 25))
+        elif decor == "slime_pool":
+            add_circle(self.world_batch, sx, sy, 6, (95, 160, 105))
+            add_circle(self.world_batch, sx - 2, sy - 1, 3, (70, 140, 80))
+        else:
+            add_rect(self.world_batch, sx - 6, sy - 6, 12, 12, (120, 120, 120))
 
     def _draw_gather(self):
         p = self.player
@@ -606,6 +547,36 @@ class Game:
             a = int(255 * (pa["life"] / pa["max"]))
             add_circle(self.world_batch, sx, sy, pa["size"]*3, (*pa["color"], a))
 
+    def _draw_terrain_textures(self):
+        """绘制可见区块的静态地面贴图（每帧重摆位 + 强制 NEAREST + 绘制）。"""
+        p = self.player
+        if not self.world or not p:
+            return
+        T = config.TILE
+        W = self.width
+        H = self.height
+        cam = self.camera
+        self._terrain_bg.width = W
+        self._terrain_bg.height = H
+        self._terrain_bg.draw()
+        ccx, ccy, _ = self.world.chunk_coords(p.x, p.y)
+        for cx in range(ccx - 2, ccx + 3):
+            for cy in range(ccy - 2, ccy + 3):
+                chunk = self.world.get_chunk(cx * _CHUNK, cy * _CHUNK)
+                if not chunk.tiles:
+                    continue
+                region, sprite = self.terrain.get(chunk, self.world)
+                # 取整 + 出血边偏移（内容区比贴图区每侧少 1 纹理像素 = 2 屏幕像素）
+                sprite.x = round((chunk.cx * _CHUNK - cam.pos.x) * T + W / 2)
+                sprite.y = round(H / 2 + (chunk.cy * _CHUNK - cam.pos.y) * T)
+                # 强制最近邻过滤：个别驱动/版本不认纹理对象上设置的 filter
+                parent = region.parent
+                gl.glBindTexture(parent.target, parent.id)
+                gl.glTexParameteri(parent.target, gl.GL_TEXTURE_MIN_FILTER, gl.GL_NEAREST)
+                gl.glTexParameteri(parent.target, gl.GL_TEXTURE_MAG_FILTER, gl.GL_NEAREST)
+                gl.glBindTexture(parent.target, 0)
+                sprite.draw()
+
     def _draw_hud(self):
         # 背景交互提示
         p = self.player
@@ -627,6 +598,33 @@ class Game:
         # 准星
         if self._ui == "none" and self.mode == "playing":
             add_circle(self.ui_batch, self._mouse[0], self._mouse[1], 3, (250, 250, 250, 220))
+
+    def _warm_terrain(self):
+        """提前生成/烘焙玩家周围的区块（半径 3 > 可见半径 2），摊到多帧。"""
+        p = self.player
+        if not self.world or not p:
+            return
+        ccx, ccy, _ = self.world.chunk_coords(p.x, p.y)
+        gen_budget = 10
+        bake_budget = 2
+        for cx in range(ccx - 3, ccx + 4):
+            for cy in range(ccy - 3, ccy + 4):
+                k = (cx, cy)
+                if k in self._warm_chunks:
+                    continue
+                chunk = self.world.get_chunk(cx * _CHUNK, cy * _CHUNK, 0,
+                                             generate=False)
+                if chunk is None:
+                    if gen_budget <= 0:
+                        continue
+                    chunk = self.world.get_chunk(cx * _CHUNK, cy * _CHUNK)
+                    gen_budget -= 1
+                if chunk.tiles:
+                    if bake_budget <= 0:
+                        continue
+                    self.terrain.get(chunk, self.world)
+                    bake_budget -= 1
+                self._warm_chunks.add(k)
 
     # ==================================================================
     # 输入处理
