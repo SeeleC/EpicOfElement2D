@@ -79,8 +79,8 @@ SHORE_FOAM    = 0.30   # 水岸“浪线”亮色混合比例（让被阻挡的�
 # 窗口 / 渲染
 # ---------------------------------------------------------------------------
 class Graphics:
-    WINDOW_W = 1920          # 初始窗口宽（1080p）
-    WINDOW_H = 1080          # 初始窗口高（1080p）
+    WINDOW_W = 1280          # 初始窗口宽（1080p）
+    WINDOW_H = 720          # 初始窗口高（1080p）
     FPS = 60
     VSYNC = False            # 与 asteroid.py 保持一致（非子类窗口 + 无 vsync 更稳）
     RESIZABLE = False        # 与 asteroid.py 保持一致

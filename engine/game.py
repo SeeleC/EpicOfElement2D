@@ -1,18 +1,21 @@
 # -*- coding: utf-8 -*-
 """Game 主控：窗口、状态机、主循环、输入、世界模拟与渲染装配。
-
 状态机 (self.mode):
     title    - 标题菜单
     classsel - 新游戏选职业
     savesel  - 存档选择
     playing  - 游戏进行中（含暂停、背包、对话子状态）
+
+自 pyglet 迁移至 arcade：
+- GameWindow 继承 arcade.Window，on_draw/on_update/键盘鼠标事件统一在此转发给 Game；
+- 按键状态用 self.keys(set) 在按下/释放时维护，替代 pyglet KeyStateHandler；
+- 绘制批处理使用 draw_util.Batch（内部封装 arcade ShapeElementList + Text）；
+- 静态地形使用 arcade.SpriteList.draw(pixelated=True) 开启最近邻滤镜。
 """
 import math
 import random
-
-import pyglet
-from pyglet.window import key
-import pyglet.gl as gl
+import arcade
+from arcade import key
 
 from . import config
 from . import render as R
@@ -29,9 +32,10 @@ from .quests import QuestManager
 from .save import SaveManager
 from .vector2 import Vec2
 from .registry import REGISTRY
-
-from .ui.draw_util import (add_rect, add_text, add_border, add_circle,
-                           set_viewport_h, begin_frame)
+from .ui.draw_util import (
+    add_rect, add_text, add_border, add_circle,
+    set_viewport_h, begin_frame, Batch,
+)
 from .ui.hud import HUD
 from .ui.inventory_screen import InventoryScreen
 from .ui.dialog import DialogBox
@@ -42,30 +46,58 @@ from .terrain import TerrainCache
 _CHUNK = 16
 
 
-class Game:
-    """游戏主控制器（非 Window 子类）。
+class GameWindow(arcade.Window):
+    """arcade 窗口子类：负责事件循环与渲染/更新入口，全部转发给 Game。"""
 
-    完全仿照 pyglet_example/version4/asteroid.py 的窗口构建方式：
-    - 窗口是普通 pyglet.window.Window 实例（模块化持有于 self.window）；
-    - on_draw 由 main.py 用 @window.event 注册，本类只提供 render() 绘制；
-    - 事件处理器（键盘/鼠标）由 main.py 通过 window.push_handlers 显式注册。
-    """
+    def __init__(self, game):
+        super().__init__(
+            config.Graphics.WINDOW_W,
+            config.Graphics.WINDOW_H,
+            config.Graphics.TITLE,
+            resizable=config.Graphics.RESIZABLE,
+            vsync=config.Graphics.VSYNC,
+        )
+        if config.Graphics.RESIZABLE:
+            self.set_minimum_size(800, 480)
+        # 替代 pyglet.clock.schedule_interval
+        self.set_update_rate(1.0 / config.Graphics.FPS)
+        self.game = game
+        # 替代 pyglet shapes.Rectangle 垫底色：clear() 时自动填充
+        self.background_color = (58, 108, 168)
+
+    def on_draw(self):
+        self.clear()
+        self.game.render()
+
+    def on_update(self, dt):
+        self.game.update(dt)
+
+    def on_key_press(self, symbol, modifiers):
+        self.game.on_key_press(symbol, modifiers)
+
+    def on_key_release(self, symbol, modifiers):
+        self.game.on_key_release(symbol, modifiers)
+
+    def on_mouse_motion(self, x, y, dx, dy):
+        self.game.on_mouse_motion(x, y, dx, dy)
+
+    def on_mouse_press(self, x, y, button, modifiers):
+        self.game.on_mouse_press(x, y, button, modifiers)
+
+    def on_mouse_scroll(self, x, y, scroll_x, scroll_y):
+        self.game.on_mouse_scroll(x, y, scroll_x, scroll_y)
+
+
+class Game:
+    """游戏主控制器。窗口为 GameWindow（arcade.Window 子类），持有于 self.window。"""
+
     def __init__(self):
         config.init_dirs()
         config.load_settings_from_json()
-        self.window = pyglet.window.Window(
-            config.Graphics.WINDOW_W, config.Graphics.WINDOW_H,
-            caption=config.Graphics.TITLE,
-            resizable=config.Graphics.RESIZABLE,
-            vsync=config.Graphics.VSYNC)
-        if config.Graphics.RESIZABLE:
-            self.window.set_minimum_size(800, 480)
-
         self.mode = "title"
         self.world = None
         self.player = None
         self.camera = Camera()
-
         self.combat = CombatSystem(self)
         self.particles = ParticlePool()
         self.gather = None
@@ -84,30 +116,28 @@ class Game:
         }
         self.current_menu = self.menus["title"]
 
-        # 输入状态
-        self.keys = pyglet.window.key.KeyStateHandler()
-        self.window.push_handlers(self.keys)
+        # 输入状态：用 set 维护按下的键（替代 pyglet KeyStateHandler）
+        self.keys = set()
         self._mouse = (0, 0)
-        self._ui = "none"   # 'inventory' | 'dialog' | None
+        self._ui = "none"  # 'inventory' | 'dialog' | None
 
-        self.batch = pyglet.graphics.Batch()
-        self.world_batch = pyglet.graphics.Batch()
-        self.ui_batch = pyglet.graphics.Batch()
+        # ★ 关键：先创建窗口！
+        # arcade 3.x 的 ShapeElementList / Sprite / SpriteList 在构造时需要
+        # 活动窗口的 OpenGL 上下文，所以窗口必须先于所有绘制对象创建。
+        self.window = GameWindow(self)
+
+        # 批处理（依赖窗口上下文，必须在窗口创建之后）
+        self.batch = Batch()
+        self.world_batch = Batch()
+        self.ui_batch = Batch()
 
         # 静态地形层：每个区块烘焙成一张贴图并缓存（饥荒式精细地面 + 高性能）。
-        # 替代旧版“每帧重建上千个地面色块 shape”的做法，保持原性能优化策略。
         self.terrain = TerrainCache(capacity=96)
+        self.terrain_list = arcade.SpriteList()
         self._warm_chunks = set()  # 已预热的区块
-        # 垫底色：保留引用，避免每帧新建 shape 造成 GC/卡顿
-        self._terrain_bg = pyglet.shapes.Rectangle(0, 0, self.width, self.height,
-                                                   color=(58, 108, 168))
 
         self.current_slot = 1
         self._populate_spawn = True
-
-        # set fps clock
-        self.clock = pyglet.clock.get_default()
-        pyglet.clock.schedule_interval(self.update, 1 / config.Graphics.FPS)
 
     # --- 窗口尺寸透传（供 UI 模块通过 self.game.width/height 读取） ---
     @property
@@ -118,6 +148,8 @@ class Game:
     def height(self):
         return self.window.height
 
+    def run(self):
+        arcade.run()
 
     # ------------------------------------------------------------------
     # 状态切换
@@ -165,6 +197,7 @@ class Game:
         if self.player is None:
             return
         self.world.entities = []
+
         # NPC（城镇与村庄）
         for npc_base in REGISTRY.all_of("npc"):
             if npc_base.get("town") in ("frantia", "noel_village"):
@@ -173,6 +206,7 @@ class Game:
                 if spawn_pets:
                     n = NPC(npc_base.content_id, nx, ny)
                     self.world.entities.append(n)
+
         # 初始几只野猪
         if spawn_pets:
             for _ in range(4):
@@ -207,7 +241,7 @@ class Game:
         self.switch_title()
 
     def quit(self):
-        pyglet.app.exit()
+        arcade.close_window()
 
     def pause(self):
         if self.mode == "playing" and self._ui == "none":
@@ -230,15 +264,18 @@ class Game:
             return
 
         p = self.player
+
         # 移动
-        move_x = (self.keys[key.RIGHT] or self.keys[key.D]) - (self.keys[key.LEFT] or self.keys[key.A])
-        move_y = (self.keys[key.UP] or self.keys[key.W]) - (self.keys[key.DOWN] or self.keys[key.S])
+        move_x = (key.RIGHT in self.keys or key.D in self.keys) - \
+                 (key.LEFT in self.keys or key.A in self.keys)
+        move_y = (key.UP in self.keys or key.W in self.keys) - \
+                 (key.DOWN in self.keys or key.S in self.keys)
         if move_x:
             p.facing = 1 if move_x > 0 else -1
         d = math.hypot(move_x, move_y) or 1
         if self._ui == "none" and not p.is_stunned():
             p.move(move_x / d * p.speed * dt, move_y / d * p.speed * dt, self.world, dt)
-            p.regen_resource(dt)
+        p.regen_resource(dt)
 
         # 敌人 AI 与更新
         for e in self.world.entities:
@@ -307,11 +344,13 @@ class Game:
         if p is None:
             return
         p.add_exp(enemy.exp_reward)
+
         # 掉落
         for it_id, cnt in getattr(enemy, "loot", []):
             g = GroundItem(it_id, enemy.x + random.uniform(-0.5, 0.5),
                            enemy.y + random.uniform(-0.5, 0.5), cnt)
             self.world.entities.append(g)
+
         # 任务记录
         if self.quest_mgr:
             self.quest_mgr.record_quests("kill", enemy.monster_id)
@@ -379,28 +418,28 @@ class Game:
     # 渲染
     # ==================================================================
     def render(self):
-        # 窗口已由 main.py 的 @window.event on_draw 负责 clear()。
+        # 窗口背景已由 GameWindow.on_draw 的 self.clear() 填充（背景色见 GameWindow）。
         # 统一整个项目使用「左上原点、Y 向下」坐标（见 config 注释）；
-        # draw_util 会据此把 shapes/Label 翻转到 pyglet 的左下原点坐标。
+        # draw_util 会据此把 shapes/Text 翻转到 arcade 的左下原点坐标。
         set_viewport_h(self.height)
-        # 清空并重新收集本帧基元（既能防 GC 画出内容，又避免跨帧累积内存泄漏）。
+        # 每帧重建 ui_batch / world_batch，避免对象无限累积导致残留与卡顿。
         begin_frame()
-        # 每帧重建 ui_batch / world_batch，避免 shapes 无限累积导致残留与卡顿。
-        self.ui_batch = pyglet.graphics.Batch()
+        self.ui_batch = Batch()
         if self.mode == "playing":
             self._draw_world()
             self._draw_hud()
         else:
             if self.current_menu:
                 self.current_menu.draw(self.ui_batch)
-        self.ui_batch.draw()
+            self.ui_batch.draw()
 
     def _draw_world(self):
         # 动态层（装饰/采集/实体/玩家/粒子）用每帧新 batch，避免累积
-        self.world_batch = pyglet.graphics.Batch()
+        self.world_batch = Batch()
         p = self.player
         if not self.world or not p:
             return
+
         # 1) 静态地面层（区块贴图，性能核心，先画保证在下层）
         self._draw_terrain_textures()
         # 2) 动态层
@@ -495,30 +534,33 @@ class Game:
                     g = REGISTRY.get("gather", gid)
                     icon = g.get("icon", "log") if g else "log"
                     color = R.IconCache().color_of(icon)
-                    add_rect(self.world_batch, sx-6, sy-14, 12, 12, color)
+                    add_rect(self.world_batch, sx - 6, sy - 14, 12, 12, color)
                     add_text(self.world_batch, g.get("name", "?") if g else "?",
                              sx, sy + 14, size=8, color=(235, 235, 235))
 
     def _draw_entity(self, e):
         sx, sy = self.camera.world_to_screen(e.x, e.y)
         if isinstance(e, Enemy):
-            add_rect(self.world_batch, sx-12, sy-18, 24, 24,
+            add_rect(self.world_batch, sx - 12, sy - 18, 24, 24,
                      (210 if e.boss else 170, 40, 40))
             # 血条
-            self._draw_entity_bar(sx-15, sy+10, 30, 3, e.hp / e.max_hp, (200, 40, 40))
+            self._draw_entity_bar(sx - 15, sy + 10, 30, 3, e.hp / e.max_hp, (200, 40, 40))
             # 名字
             if e.boss:
-                add_text(self.world_batch, e.name(), sx, sy+16, size=9, color=(255, 220, 100))
+                add_text(self.world_batch, e.name(), sx, sy + 16, size=9,
+                         color=(255, 220, 100))
         elif isinstance(e, NPC):
-            add_rect(self.world_batch, sx-11, sy-16, 22, 22, (90, 160, 230))
-            add_text(self.world_batch, e.name, sx, sy+14, size=9, color=(230, 230, 230))
+            add_rect(self.world_batch, sx - 11, sy - 16, 22, 22, (90, 160, 230))
+            add_text(self.world_batch, e.name, sx, sy + 14, size=9,
+                     color=(230, 230, 230))
         elif isinstance(e, GroundItem):
             color = R.IconCache().color_of(e.icon)
-            add_rect(self.world_batch, sx-5, sy-14, 10, 10, color)
+            add_rect(self.world_batch, sx - 5, sy - 14, 10, 10, color)
         elif isinstance(e, Projectile):
-            pcol = {"fireball": (255, 120, 40), "ice_spear": (120, 190, 255),
-                    "arrow": (220, 190, 120), "pierce_arrow": (200, 220, 255)
-                    }.get(e.kind, (230, 230, 230))
+            pcol = {"fireball": (255, 120, 40),
+                    "ice_spear": (120, 190, 255),
+                    "arrow": (220, 190, 120),
+                    "pierce_arrow": (200, 220, 255)}.get(e.kind, (230, 230, 230))
             add_circle(self.world_batch, sx, sy, 5, pcol)
 
     def _draw_entity_bar(self, sx, sy, w, h, pct, color):
@@ -528,27 +570,33 @@ class Game:
     def _draw_player(self):
         p = self.player
         sx, sy = self.camera.world_to_screen(p.x, p.y)
-        color = {"swordsman": (220, 190, 120), "knight": (150, 180, 230),
-                 "mage": (200, 130, 220), "ranger": (130, 220, 150)
-                 }.get(p.klass, (200, 200, 200))
-        add_rect(self.world_batch, sx-9, sy-18, 18, 22, color)
+        color = {"swordsman": (220, 190, 120),
+                 "knight": (150, 180, 230),
+                 "mage": (200, 130, 220),
+                 "ranger": (130, 220, 150)}.get(p.klass, (200, 200, 200))
+        add_rect(self.world_batch, sx - 9, sy - 18, 18, 22, color)
         # 朝向指示
         if p.facing > 0:
-            add_rect(self.world_batch, sx+9, sy-6, 5, 4, (40, 40, 40))
+            add_rect(self.world_batch, sx + 9, sy - 6, 5, 4, (40, 40, 40))
         else:
-            add_rect(self.world_batch, sx-14, sy-6, 5, 4, (40, 40, 40))
+            add_rect(self.world_batch, sx - 14, sy - 6, 5, 4, (40, 40, 40))
         # 受击闪红
         if p.hit_timer > 0:
-            add_rect(self.world_batch, sx-9, sy-18, 18, 22, (255, 60, 60, 160))
+            add_rect(self.world_batch, sx - 9, sy - 18, 18, 22, (255, 60, 60, 160))
 
     def _draw_particles(self):
         for pa in self.particles.particles:
             sx, sy = self.camera.world_to_screen(pa["x"], pa["y"])
             a = int(255 * (pa["life"] / pa["max"]))
-            add_circle(self.world_batch, sx, sy, pa["size"]*3, (*pa["color"], a))
+            add_circle(self.world_batch, sx, sy, pa["size"] * 3, (*pa["color"], a))
 
     def _draw_terrain_textures(self):
-        """绘制可见区块的静态地面贴图（每帧重摆位 + 强制 NEAREST + 绘制）。"""
+        """绘制可见区块的静态地面贴图（每帧重摆位 + NEAREST + 绘制）。
+
+        自 pyglet 迁移：
+        - 不再手动 glTexParameteri 强制 NEAREST，改用 SpriteList.draw(pixelated=True)；
+        - arcade 3.x 的 Sprite 以「中心」定位，由原 pyglet 的左下角公式 + 精灵宽高换算中心。
+        """
         p = self.player
         if not self.world or not p:
             return
@@ -556,26 +604,22 @@ class Game:
         W = self.width
         H = self.height
         cam = self.camera
-        self._terrain_bg.width = W
-        self._terrain_bg.height = H
-        self._terrain_bg.draw()
+
+        self.terrain_list.clear()
         ccx, ccy, _ = self.world.chunk_coords(p.x, p.y)
         for cx in range(ccx - 2, ccx + 3):
             for cy in range(ccy - 2, ccy + 3):
                 chunk = self.world.get_chunk(cx * _CHUNK, cy * _CHUNK)
                 if not chunk.tiles:
                     continue
-                region, sprite = self.terrain.get(chunk, self.world)
-                # 取整 + 出血边偏移（内容区比贴图区每侧少 1 纹理像素 = 2 屏幕像素）
-                sprite.x = round((chunk.cx * _CHUNK - cam.pos.x) * T + W / 2)
-                sprite.y = round(H / 2 + (chunk.cy * _CHUNK - cam.pos.y) * T)
-                # 强制最近邻过滤：个别驱动/版本不认纹理对象上设置的 filter
-                parent = region.parent
-                gl.glBindTexture(parent.target, parent.id)
-                gl.glTexParameteri(parent.target, gl.GL_TEXTURE_MIN_FILTER, gl.GL_NEAREST)
-                gl.glTexParameteri(parent.target, gl.GL_TEXTURE_MAG_FILTER, gl.GL_NEAREST)
-                gl.glBindTexture(parent.target, 0)
-                sprite.draw()
+                tex, sprite = self.terrain.get(chunk, self.world)
+                # 原 pyglet 版本 sprite.x/y 是「左下角」；arcade 需要「中心点」
+                left = round((chunk.cx * _CHUNK - cam.pos.x) * T + W / 2)
+                bottom = round(H / 2 + (chunk.cy * _CHUNK - cam.pos.y) * T)
+                sprite.center_x = left + sprite.width / 2
+                sprite.center_y = bottom + sprite.height / 2
+                self.terrain_list.append(sprite)
+        self.terrain_list.draw(pixelated=True)
 
     def _draw_hud(self):
         # 背景交互提示
@@ -588,6 +632,7 @@ class Game:
                 sx, sy = self.camera.world_to_screen(p.x, p.y - 1)
                 add_text(self.ui_batch, "[E] 与 " + e.name + " 交谈",
                          sx, sy - 34, size=11, color=(255, 255, 120))
+
         # 其它 UI
         if self._ui == "none":
             self.hud.draw(self.ui_batch)
@@ -595,9 +640,11 @@ class Game:
             self.inventory_screen.draw(self.ui_batch)
         elif self._ui == "dialog":
             self.dialog.draw(self.ui_batch, self.width, self.height)
+
         # 准星
         if self._ui == "none" and self.mode == "playing":
-            add_circle(self.ui_batch, self._mouse[0], self._mouse[1], 3, (250, 250, 250, 220))
+            add_circle(self.ui_batch, self._mouse[0], self._mouse[1], 3,
+                       (250, 250, 250, 220))
 
     def _warm_terrain(self):
         """提前生成/烘焙玩家周围的区块（半径 3 > 可见半径 2），摊到多帧。"""
@@ -612,8 +659,7 @@ class Game:
                 k = (cx, cy)
                 if k in self._warm_chunks:
                     continue
-                chunk = self.world.get_chunk(cx * _CHUNK, cy * _CHUNK, 0,
-                                             generate=False)
+                chunk = self.world.get_chunk(cx * _CHUNK, cy * _CHUNK, 0, generate=False)
                 if chunk is None:
                     if gen_budget <= 0:
                         continue
@@ -631,6 +677,7 @@ class Game:
     # ==================================================================
     def on_key_press(self, symbol, modifiers):
         config.load_settings_from_json()
+        self.keys.add(symbol)
 
         if self.mode != "playing":
             # 菜单导航（回车确认首个按钮即可 / ESC 返回）
@@ -647,6 +694,7 @@ class Game:
 
         # playing
         p = self.player
+
         if symbol == key.ESCAPE:
             if self._ui == "none":
                 self.pause()
@@ -671,7 +719,7 @@ class Game:
             self._equip_or_unequip()
             return
 
-        if symbol == key._1:
+        if symbol == key.KEY_1:
             self.use_potion()
             return
 
@@ -683,6 +731,10 @@ class Game:
         # 空格：翻滚/招架
         if symbol == key.SPACE:
             self._dash_or_block()
+
+    def on_key_release(self, symbol, modifiers):
+        """释放按键：从 self.keys 中移除（替代 pyglet KeyStateHandler）。"""
+        self.keys.discard(symbol)
 
     def _equip_or_unequip(self):
         p = self.player
@@ -713,14 +765,14 @@ class Game:
         p.move(step * 0.05, 0, self.world, 1)
 
     def on_mouse_motion(self, x, y, dx, dy):
-        # pyglet 鼠标 y 是左下原点向上；统一转换为项目「左上 Y 向下」坐标
+        # arcade 鼠标 y 是左下原点向上；统一转换为项目「左上 Y 向下」坐标
         y = self.height - y
         self._mouse = (x, y)
         if self.mode != "playing" and self.current_menu:
             self.current_menu.motion(x, y)
 
     def on_mouse_press(self, x, y, button, modifiers):
-        # pyglet 鼠标 y 是左下原点向上；统一转换为项目「左上 Y 向下」坐标
+        # arcade 鼠标 y 是左下原点向上；统一转换为项目「左上 Y 向下」坐标
         y = self.height - y
         if self.mode != "playing" and self.current_menu:
             self.current_menu.click(x, y)

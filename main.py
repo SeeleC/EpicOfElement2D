@@ -1,10 +1,13 @@
 # -*- coding: utf-8 -*-
 """《元素之诗：灾厄》2D 数据驱动实验 —— 程序入口。
-
-启动方式： python main.py
+启动方式：
+    python main.py
 
 引擎首先装载 content/ 下的所有 JSON「数据包」，随后进入标题菜单。
 游戏世界 / 物品 / 技能 / 怪物 / 配方 全部由 JSON 驱动(类似 MC 数据包)。
+
+自 pyglet 迁移至 arcade：窗口与事件循环改由 engine.game.GameWindow（arcade.Window 子类）
+负责，main.py 只负责装载数据包并进入 arcade 主循环。
 """
 import sys
 import io
@@ -21,9 +24,9 @@ def _ensure_utf8():
 def main():
     _ensure_utf8()
     try:
-        import pyglet
+        import arcade
     except ImportError:
-        print("未安装 pyglet。请执行: pip install -r requirements.txt")
+        print("未安装 arcade。请执行: pip install -r requirements.txt")
         return
 
     # 先装载内容数据包，失败则中止启动
@@ -44,20 +47,7 @@ def main():
 
     from engine.game import Game
     game = Game()
-    window = game.window
-
-    # 完全仿照 pyglet_example/version4/asteroid.py 的窗口驱动方式：
-    #  on_draw 用 @window.event 注册；事件处理器（键盘/鼠标）用 push_handlers 注册。
-    @window.event
-    def on_draw():
-        window.clear()
-        game.render()
-
-    # 推入事件处理器：游戏本体负责 on_key_press / on_mouse_*；
-    # （按键状态器 KeyStateHandler 已在 Game.__init__ 内注册到 self.keys）
-    window.push_handlers(game)
-
-    pyglet.app.run()
+    game.run()
 
 
 if __name__ == "__main__":
